@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PnL Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background: #f7f7f7;
+    }
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0px 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .leverage-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .leverage-container input[type="number"] {
+      flex: 1;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      background: #e2f0d9;
+      border: 1px solid #b2dba1;
+      border-radius: 4px;
+      font-weight: bold;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>PnL Calculator</h1>
+    <label>
+      Current Price (USDT):
+      <input type="number" id="currentPrice" placeholder="e.g., 100" step="any">
+    </label>
+    <label>
+      Amount (USDT):
+      <input type="number" id="amount" placeholder="e.g., 100" step="any">
+    </label>
+    <label>
+      TP:
+      <input type="number" id="tp" placeholder="Take Profit" step="any">
+    </label>
+    <label>
+      SL:
+      <input type="number" id="sl" placeholder="Stop Loss" step="any">
+    </label>
+    <label>
+      Fee (%):
+      <input type="number" id="fee" placeholder="e.g., 1" step="any">
+    </label>
+    <label>
+      <div class="leverage-container">
+        <input type="checkbox" id="useLeverage">
+        <span>Use Leverage</span>
+        <input type="number" id="leverage" placeholder="Leverage" step="any" disabled>
+      </div>
+    </label>
+    <div class="result" id="result">
+      Estimated Earning: -- USDT or --% of Capital<br>
+      If SL hits, approximate Loss: -- USDT or --% of Capital
+    </div>
+  </div>
+
+  <script>
+    // Get all DOM elements
+    const currentPriceInput = document.getElementById('currentPrice');
+    const amountInput = document.getElementById('amount');
+    const tpInput = document.getElementById('tp');
+    const slInput = document.getElementById('sl');
+    const feeInput = document.getElementById('fee');
+    const useLeverageCheckbox = document.getElementById('useLeverage');
+    const leverageInput = document.getElementById('leverage');
+    const resultDiv = document.getElementById('result');
+
+    // Update calculation on any input change
+    [currentPriceInput, amountInput, tpInput, slInput, feeInput, leverageInput].forEach(input => {
+      input.addEventListener('input', recalc);
+    });
+    useLeverageCheckbox.addEventListener('change', function() {
+      leverageInput.disabled = !this.checked;
+      if (!this.checked) {
+        leverageInput.value = '';
+      }
+      recalc();
+    });
+
+    function recalc() {
+      // Parse input values
+      const currentPrice = parseFloat(currentPriceInput.value);
+      const amount = parseFloat(amountInput.value);
+      const tp = parseFloat(tpInput.value);
+      const sl = parseFloat(slInput.value);
+      const feePercent = parseFloat(feeInput.value);
+      let leverage = parseFloat(leverageInput.value);
+
+      // If any required value is missing or invalid, show default message
+      if (isNaN(currentPrice) || isNaN(amount) || isNaN(tp) || isNaN(sl) || isNaN(feePercent)) {
+        resultDiv.innerHTML = "Estimated Earning: -- USDT or --% of Capital<br>If SL hits, approximate Loss: -- USDT or --% of Capital";
+        return;
+      }
+
+      // Determine capital based on leverage checkbox
+      let capital;
+      if (useLeverageCheckbox.checked) {
+        capital = (!isNaN(leverage) && leverage > 0) ? amount * leverage : amount;
+      } else {
+        capital = amount;
+      }
+
+      // Guard against division by zero or invalid capital
+      if (capital <= 0 || currentPrice <= 0) {
+        resultDiv.innerHTML = "Estimated Earning: -- USDT or --% of Capital<br>If SL hits, approximate Loss: -- USDT or --% of Capital";
+        return;
+      }
+
+      // Calculate number of units
+      const units = capital / currentPrice;
+
+      // Calculate raw profit and loss (assuming a long position)
+      const rawProfit = (tp - currentPrice) * units;
+      const rawLoss = (currentPrice - sl) * units;
+
+      // Calculate fee amount
+      const feeAmount = capital * (feePercent / 100);
+
+      // Final profit and loss after fee
+      const finalProfit = rawProfit - feeAmount;
+      const finalLoss = rawLoss + feeAmount;
+
+      // Calculate percentages of capital
+      const profitPercent = (finalProfit / capital) * 100;
+      const lossPercent = (finalLoss / capital) * 100;
+
+      // Update the result display
+      resultDiv.innerHTML = 
+        "Estimated Earning: " + finalProfit.toFixed(4) + " USDT or " + profitPercent.toFixed(2) + "% of Capital<br>" +
+        "If SL hits, approximate Loss: " + finalLoss.toFixed(4) + " USDT or " + lossPercent.toFixed(2) + "% of Capital";
+    }
+  </script>
+</body>
+</html>
